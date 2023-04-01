@@ -1,16 +1,21 @@
-const puppeteer = require("puppeteer-core");
+const puppeteer = require("puppeteer");
 const config = require("./config");
 const server = require("./server");
 
 const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time));
 
+const args = [
+	"--js-flags=--jitless",
+	//"--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure",
+];
+if (server.runtime === "aws") {
+	args.push("--no-sandbox");
+}
+
 const browser = puppeteer.launch({
 	pipe: true,
 	dumpio: true,
-	executablePath: "./chromium/chrome",
-	args: (server.runtime !== "gcp" ? ["--no-sandbox"] : []).concat([
-		"--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure",
-	]),
+	args,
 });
 
 server.run({ subscribe: true }, async ({ message }) => {

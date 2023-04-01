@@ -14,7 +14,7 @@ const listen = (opts, handler) => {
         reqBody = await getRawBody(req, {
           length: req.headers['content-length'],
           limit: '20kb',
-          encoding: 'utf8'
+          encoding: 'utf8',
         })
       } catch {
         res.writeHead(413).end()
@@ -22,9 +22,17 @@ const listen = (opts, handler) => {
       }
     }
     if (opts.subscribe) {
+      if (req.method !== 'POST') {
+        res.writeHead(405).end()
+        return
+      }
+      if (req.headers.origin !== undefined) {
+        res.writeHead(403).end()
+        return
+      }
       const data = JSON.parse(reqBody).message.data
       await handler({
-        message: JSON.parse(Buffer.from(data, 'base64').toString())
+        message: JSON.parse(Buffer.from(data, 'base64').toString()),
       })
       res.writeHead(204).end()
     } else {
@@ -43,7 +51,7 @@ const listen = (opts, handler) => {
         query,
         method: req.method,
         headers: req.headers,
-        body: reqBody
+        body: reqBody,
       })
       res.writeHead(statusCode, headers).end(body)
     }
@@ -62,7 +70,7 @@ if (process.env.AWS_EXECUTION_ENV) {
 
   const runSubscribe = (opts, handler) => {
     for (let i = 0; i < 5; i++) {
-      ;(async () => {
+      (async () => {
         while (true) {
           let msg
           let body
@@ -83,7 +91,7 @@ if (process.env.AWS_EXECUTION_ENV) {
           await handler({ message: body })
           await sqs.deleteMessage({
             QueueUrl: process.env.APP_SQS_URL,
-            ReceiptHandle: msg.ReceiptHandle
+            ReceiptHandle: msg.ReceiptHandle,
           })
         }
       })()
@@ -105,7 +113,7 @@ if (process.env.AWS_EXECUTION_ENV) {
         query,
         method: evt.httpMethod,
         headers: evt.headers,
-        body
+        body,
       })
     }
     ric.run('.', 'server._ricHandler')
@@ -120,7 +128,7 @@ if (process.env.AWS_EXECUTION_ENV) {
   }
   exports.publish = message => sqs.sendMessage({
     MessageBody: Buffer.from(JSON.stringify(message)).toString('base64'),
-    QueueUrl: process.env.APP_SQS_URL
+    QueueUrl: process.env.APP_SQS_URL,
   })
 } else if (process.env.K_SERVICE) {
   exports.runtime = 'gcp'
@@ -130,7 +138,7 @@ if (process.env.AWS_EXECUTION_ENV) {
   if (process.env.APP_PUBSUB_TOPIC) {
     const { PubSub } = require('@google-cloud/pubsub')
     const topic = new PubSub().topic(process.env.APP_PUBSUB_TOPIC)
-    exports.publish = message => topic.publishJSON(message)
+    exports.publish = message => topic.publishMessage({ json: message })
   }
 } else {
   exports.runtime = 'local'
@@ -143,8 +151,8 @@ if (process.env.AWS_EXECUTION_ENV) {
     const req = http.request('http://localhost:8081', { method: 'POST' })
     req.end(JSON.stringify({
       message: {
-        data: Buffer.from(JSON.stringify(message)).toString('base64')
-      }
+        data: Buffer.from(JSON.stringify(message)).toString('base64'),
+      },
     }))
   }
 }

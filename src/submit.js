@@ -52,9 +52,9 @@ server.run({}, async (req) => {
 		}
 	}
 	const url = body.get("url");
-	const regex = challenge.urlRegex || /^https?:\/\//;
+	const regex = challenge.urlRegex ?? /^https?:\/\//;
 	if (!regex.test(url)) {
-		return send("The URL must match " + regex.source);
+		return send(`The URL must match ${regex.source}`);
 	}
 	const payload = {
 		challengeId,
